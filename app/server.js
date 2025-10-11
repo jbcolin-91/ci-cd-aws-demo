@@ -6,6 +6,10 @@ app.get('/', (req, res) => {
 	res.send('Hello from AWS CI/CD Demo!');
 });
 
-app.listen(port, () => {
-	console.log(`Server running on port ${port}`);
-});
+if (require.main === module) {
+	app.listen(port, () => {
+		console.log(`Server running on port ${port}`);
+	});
+}
+
+module.exports = app;
