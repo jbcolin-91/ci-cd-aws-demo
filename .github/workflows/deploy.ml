@@ -1,32 +1,81 @@
-
-
-name: CI - Test and Validate
+name: Deploy (No-AWS Test)
 
 on:
-    push:
-        branches: [ "main" ]
-    pull_request:
+  workflow_dispatch:  # manual trigger
+  push:
+    branches: [ "main" ]  # optional: keep or remove until AWS is ready
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: node-demo-app
+      IMAGE_TAG: ${{ github.sha }}
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                node-version: 18
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Install dependencies & run tests
-              working-directory: app
-              run: |
-                npm ci
-                npm test
+      # 1) Build & test the app
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-            - name: Validate Terraform
-              working-directory: infra
-              run: |
-                terraform init -backend=false
-                terraform fmt -check
-                terraform validate
+      - name: Install & test
+        working-directory: app
+        run: |
+          npm ci
+          npm test
+
+      # 2) Build Docker image
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG ./app
+
+      # 3) Run container in the runner (fake deploy) + health check
+      - name: Run container
+        run: |
+          docker run -d --name demo -p 8080:8080 $IMAGE_NAME:$IMAGE_TAG
+          # wait for it to come up
+          for i in {1..20}; do
+            sleep 1
+            if curl -sf http://localhost:8080 >/dev/null; then
+              echo "App is up"; break
+            fi
+            echo "Waiting for app..."
+          done
+          # final health assertion
+          curl -sS http://localhost:8080 | tee response.txt
+          grep -q "Hello" response.txt
+
+      - name: Show running containers
+        run: docker ps
+
+      # 4) Terraform (plan-only) to test IaC pipeline bits
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform fmt/validate
+        working-directory: infra
+        run: |
+          terraform init -backend=false
+          terraform fmt -check
+          terraform validate
+
+      - name: Terraform plan (no backend, no apply)
+        working-directory: infra
+        run: terraform plan -out=tfplan
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: infra/tfplan
+
+      # 5) Cleanup container (keep the runner clean)
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f demo || true
+
