@@ -24,6 +24,11 @@ jobs:
                 npm ci
                 npm test
 
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                terraform_version: 1.9.5
+            
             - name: Validate Terraform
               working-directory: infra
               run: |
