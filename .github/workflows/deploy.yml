@@ -2,7 +2,7 @@ name: Deploy (No-AWS Test)
 
 on:
   workflow_run:  # manual trigger
-    worfklows: [ "CI" ]
+    worfklows: [ CI ]
     types: [ completed ]
     branches: [ "main" ]
 
