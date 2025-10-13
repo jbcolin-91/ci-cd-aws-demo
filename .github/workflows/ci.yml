@@ -1,6 +1,6 @@
 
 
-name: CI - Test and Validate
+name: CI
 
 on:
     push:

@@ -1,12 +1,14 @@
 name: Deploy (No-AWS Test)
 
 on:
-  workflow_dispatch:  # manual trigger
-  push:
-    branches: [ "main" ]  # optional: keep or remove until AWS is ready
+  workflow_run:  # manual trigger
+    worfklows: [ "CI" ]
+    types: [ completed ]
+    branches: [ "main" ]
 
 jobs:
   deploy:
+    if: ${{ github.event.worfklow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       IMAGE_NAME: node-demo-app
