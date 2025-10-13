@@ -137,3 +137,13 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Terraform
+**/.terraform
+**/terraform.tfstate.backup
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/*.tfvars
+**/*.tfvars.json
+
+# Docker
