@@ -20,7 +20,7 @@ jobs:
       - name: Checkout commit
         uses: actions/checkout@v4
         with:
-          ref: $IMAGE_TAG
+          ref: ${{ env.IMAGE_TAG }}
 
       - name: Set up buildx
         uses: docker/setup-buildx-action@v3
@@ -55,7 +55,7 @@ jobs:
       - name: Checkout commit
         uses: ctions/checkout@v4
         with:
-          ref: $IMAGE_TAG
+          ref: ${{ env.IMAGE_TAG }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -95,7 +95,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: $IMAGE_TAG
+          ref: ${{ env.IMAGE_TAG }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
