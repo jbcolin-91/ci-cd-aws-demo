@@ -110,4 +110,4 @@ jobs:
 
       - name: Terraform apply
         working-directory: infra
-        run: terraform apply -auto-pprove tfplan
+        run: terraform apply -auto-approve tfplan
