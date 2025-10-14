@@ -145,5 +145,6 @@ vite.config.ts.timestamp-*
 **/terraform.tfstate
 **/*.tfvars
 **/*.tfvars.json
+**/tfplan
 
 # Docker

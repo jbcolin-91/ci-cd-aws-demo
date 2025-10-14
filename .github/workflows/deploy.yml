@@ -7,83 +7,107 @@ on:
     branches: [ "main" ]
 
 jobs:
-  deploy:
+  build_and_push:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment: deployment
     env:
       IMAGE_NAME: ci-cd-demo-app
-      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}   # ← use CI's commit
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
       IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-demo-app
-
+   
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout commit
+        uses: action/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: $IMAGE_TAG
 
-      # 1) Build Docker image
-      - name: Build Docker image
-        run: docker build -t $IMAGE_REPO:$IMAGE_TAG ./app
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@v3
 
-      # 2) Login to Docker Hub
+      # 3) Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3) Login to Docker Hub
-      - name: Push image
-        run: |
-          docker push $IMAGE_REPO:$IMAGE_TAG
-          docker tag  $IMAGE_REPO:$IMAGE_TAG $IMAGE_REPO:latest
-          docker push $IMAGE_REPO:latest
+      # 4) Build and push docker image
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          push: true
+          tags: |
+            $IMAGE_REPO:$IMAGE_TAG
+            $IMAGE_REPO:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # 4) Run container in the runner (fake deploy) + health check
-      - name: Run container
-        run: |
-          docker run -d --name demo -p 8080:8080 $IMAGE_REPO:$IMAGE_TAG
-          # wait for it to come up
-          for i in {1..20}; do
-            sleep 1
-            if curl -sf http://localhost:8080 >/dev/null; then
-              echo "App is up"; break
-            fi
-            echo "Waiting for app..."
-          done
-          # final health assertion
-          curl -sS http://localhost:8080 | tee response.txt
-          grep -q "Hello" response.txt
+  plan:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    environment: deployment
+    env:
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Show running containers
-        run: docker ps
+    steps:
+      - name: Checkout commit
+        uses: ctions/checkout@v4
+        with:
+          ref: $IMAGE_TAG
 
-      # 5) Terraform (plan-only) to test IaC pipeline bits
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
-      - name: Terraform fmt/validate
+      - name: Terraform init/validate
         working-directory: infra
         run: |
           terraform init -backend=false
           terraform fmt -check
           terraform validate
 
-      - name: Terraform plan (no backend, no apply)
+      - name: Terraform plan
         working-directory: infra
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan \
+            -var="docker_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+            -var="image_name=ci-cd-demo-app" \
+            -var="image_tag=${IMAGE_TAG}" \
+            -out=tfplan
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
+          name: tfplan
           path: infra/tfplan
 
-      # 5) Cleanup container (keep the runner clean)
-      - name: Cleanup
-        if: always()
-        run: |
-          docker rm -f demo || true
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: deployment
+    env:
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: $IMAGE_TAG
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Download plan
+        uses: action/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra
+
+      - name: Terraform apply
+        working-directory: infra
+        run: terraform apply -auto-pprove tfplan
