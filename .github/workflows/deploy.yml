@@ -39,8 +39,8 @@ jobs:
           context: ./app
           push: true
           tags: |
-            $IMAGE_REPO:$IMAGE_TAG
-            $IMAGE_REPO:latest
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_REPO }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
