@@ -12,20 +12,20 @@ provider "docker" {}
 # Variables
 
 variable "docker_username" {
-    description = "Docker Hub username"
-    type        = string
+  description = "Docker Hub username"
+  type        = string
 }
 
 variable "image_name" {
-    description = "Repository name"
-    type        = string
-    default     = "ci-cd-demo-app"
+  description = "Repository name"
+  type        = string
+  default     = "ci-cd-demo-app"
 }
 
 variable "image_tag" {
-    description = "Image tag to deploy"
-    type        = string
-    default     = "latest"
+  description = "Image tag to deploy"
+  type        = string
+  default     = "latest"
 }
 
 # Resources
@@ -51,10 +51,10 @@ resource "docker_container" "app" {
 # Outputs
 
 output "app_image" {
-    value = docker_image.app.name
+  value = docker_image.app.name
 }
 
-output app_url {
-    value = "http://localhost:8080"
+output "app_url" {
+  value = "http://localhost:8080"
 }
 
