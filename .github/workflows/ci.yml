@@ -29,6 +29,17 @@ jobs:
               with:
                 terraform_version: 1.9.5
             
+            - name: tflint
+              uses: terraform-linters/setup-tflint@v4
+              run: |
+                tflint --init
+                tflint infra
+
+            - name: tfsec
+              uses: aquasecurity/tfsec-action@v1
+              with:
+                working_directory: infra
+
             - name: Validate Terraform
               working-directory: infra
               run: |
