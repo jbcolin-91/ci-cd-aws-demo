@@ -102,6 +102,10 @@ jobs:
         with:
           terraform_version: 1.9.5
 
+      - name: Terraform init (same backend mode as plan)
+        working-directory: infra
+        run: terraform init -backend=false
+
       - name: Download plan
         uses: actions/download-artifact@v4
         with:
