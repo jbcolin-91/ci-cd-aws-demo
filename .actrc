@@ -1,0 +1,6 @@
+# .actrc
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+--secret-file .secrets
+--artifact-server-path ./.artifacts
+--artifact-server-addr 0.0.0.0
+--artifact-server-port 63101

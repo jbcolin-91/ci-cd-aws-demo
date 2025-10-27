@@ -5,22 +5,32 @@ on:
     workflows: [ CI ]
     types: [completed]
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit HEAD"
+        required: false
+
+env:
+  COMMIT_SHA: ${{ github.event_name == 'workflow_dispatch'
+                  && (github.event.inputs.sha || github.sha)
+                  || github.event.workflow_run.head_sha }}
 
 jobs:
   build_and_push:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: registry
     env:
       IMAGE_NAME: ci-cd-demo-app
-      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
       IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-demo-app
    
     steps:
       - name: Checkout commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.IMAGE_TAG }}
+          token: ${{ secrets.GITHUB_TOKEN }} 
+          ref: ${{ env.COMMIT_SHA }}
 
       - name: Set up buildx
         uses: docker/setup-buildx-action@v3
@@ -39,23 +49,21 @@ jobs:
           context: ./app
           push: true
           tags: |
-            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_REPO }}:${{ env.COMMIT_SHA }}
             ${{ env.IMAGE_REPO }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: ${{ !env.ACT && 'type=gha' || '' }}
+          cache-to: ${{ !env.ACT && 'type=gha,mode=max' || '' }}
 
   plan:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: registry
-    env:
-      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
 
     steps:
       - name: Checkout commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.IMAGE_TAG }}
+          ref: ${{ env.COMMIT_SHA }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -75,7 +83,7 @@ jobs:
           terraform plan \
             -var="docker_username=${{ secrets.DOCKERHUB_USERNAME }}" \
             -var="image_name=ci-cd-demo-app" \
-            -var="image_tag=${IMAGE_TAG}" \
+            -var="image_tag=${COMMIT_SHA}" \
             -out=tfplan
 
       - name: Upload plan artifact
@@ -88,14 +96,12 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     environment: deployment
-    env:
-      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.IMAGE_TAG }}
+          ref: ${{ env.COMMIT_SHA }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
