@@ -1,5 +1,6 @@
 ![GitHub Workflow Status](https://github.com/jbcolin-91/ci-cd-aws-demo/actions/workflows/ci.yml/badge.svg)
 ![GitHub Workflow Status](https://github.com/jbcolin-91/ci-cd-aws-demo/actions/workflows/deploy.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🌐 Overview
 
@@ -22,9 +23,8 @@ flowchart LR
     A[Git Push] --> B[CI Workflow: build & test]
     B --> C[Docker image built & pushed]
     C --> D[Deploy Workflow: Terraform plan/apply]
-    D --> E[Infrastructure ready]
+    D --> E[Infrastructure ready (e.g., ECS)]
     E --> F[App accessible at endpoint]
-```
 
 ## ⚙️ CI/CD Workflow Summary
 
@@ -53,10 +53,13 @@ You can run the full workflow locally using [act](https://github.com/nektos/act)
 ```bash
 brew install act
 act workflow_dispatch -W .github/workflows/deploy.yml -v
-```
+
+
+---
 
 ### 8️⃣ Deployment (future or optional section)
 
+```markdown
 ## ☁️ Deployment (AWS)
 
 Future versions will provision:
